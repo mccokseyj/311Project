@@ -10,7 +10,7 @@ initial AN = 4'b0111;
 reg [3:0] seven_in;
 reg [1:0] count = 0;
 
-character_to_segment disp0(seven_in,seven_out);
+binary_to_segment disp0(seven_in,seven_out);
 
 always @(posedge clk) begin
 
