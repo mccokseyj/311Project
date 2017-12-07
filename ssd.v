@@ -33,6 +33,8 @@ initial AN = 4'b0111;
 reg [3:0] seven_in;
 reg [1:0] count = 0;
 reg [15:0] allAN = 16'b0111101111011110;
+reg [15:0] Guess_Pass = 16'd0;
+reg [15:0] Old_Pass = 16'd0;
 wire clean_enter;
 wire new_clk;
 
@@ -42,33 +44,38 @@ debouncer clean(new_clk, reset,enter,clean_enter);
 binary_to_segment disp0(seven_in,seven_out);
 
 always @(posedge new_clk) begin
+count <= count + 1;
 	case(count)
 	0:
 	begin
 	AN <= allAN[15:12];
 	seven_in <= switch_test;
+	Guess_Pass [15:12] <= switch_test;
 	end
 	1:
 	begin
-	AN <= allAN[11:8];
+	AN <= allAN[15:8];
 	seven_in <= switch_test;
+	Guess_Pass [11:8] <= switch_test;
 	end
 	2:
 	begin
-	AN <= allAN[7:4];
+	AN <= allAN[15:4];
 	seven_in <= switch_test;
+	Guess_Pass [7:4] <= switch_test;
 	end
 	3:
 	begin
-	AN <= allAN[3:0];
+	AN <= allAN[15:0];
 	seven_in <= switch_test;
+	Guess_Pass [3:0] <= switch_test;
 	end
 	endcase
 end
 
-always @(posedge enter)
-begin
-		count <= count + 1;
-end
+//always @(posedge enter)
+//begin
+		//count <= count + 1;
+//end
 
 endmodule
