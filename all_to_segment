@@ -18,7 +18,7 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
-module binary_to_segment(
+module all_to_segment(
     input [4:0] binary_in,
     output reg [7:0] seven_out
     );
