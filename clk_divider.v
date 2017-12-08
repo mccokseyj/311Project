@@ -16,10 +16,10 @@ module clk_divider(
     );
 	 
 	 
-parameter toggle_value = 25'b1001100010010110100000000;
+parameter toggle_value = 22'b1001100010010100000000;
 
 	 
-reg[24:0] cnt;
+reg[21:0] cnt;
 
 always@(posedge clk_in or posedge rst)
 begin
