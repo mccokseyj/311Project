@@ -1,8 +1,8 @@
 module allANS(
-	 input [15:0] disps,
+    input [15:0] disps,
     input clk,
     output [6:0] seven_out,
-	 output reg [3:0] AN
+    output reg [3:0] AN
     );
 
 reg [1:0] count = 0;
