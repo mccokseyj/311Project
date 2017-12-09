@@ -19,7 +19,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 module allANS(
-	 input [19:0] disps,
+	 input [21:0] disps,
     input clk,
     output [7:0] seven_out,
 	 //input reset,
@@ -34,6 +34,7 @@ all_to_segment a1(seven_in,seven_out);
 clk_divider clk1(clk,reset,new_clk);
 
 always @(posedge new_clk) begin
+
 count <= count + 2'd1;
 
 	case(count)
