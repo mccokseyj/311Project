@@ -37,10 +37,10 @@ begin
 		5'd8: seven_out =7'b0000000;
 		5'd9: seven_out =7'b0000100;
 		5'd10: seven_out = 7'b0001000;		//A
-		5'd11: seven_out = 7'b1100000;
-		5'd12: seven_out = 7'b0110001;
-		5'd13: seven_out = 7'b1000010;
-		5'd14: seven_out = 7'b0110000;
+		5'd11: seven_out = 7'b1100000;		//b
+		5'd12: seven_out = 7'b0110001;		//C
+		5'd13: seven_out = 7'b1000010;		//d
+		5'd14: seven_out = 7'b0110000;		//E
 		5'd15: seven_out = 7'b0111000;		//F
 		
 		5'd16: seven_out = 7'b1111110;		//Display Dashes
