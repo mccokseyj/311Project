@@ -11,7 +11,7 @@ module ASM (input clk,
 
 
 //registers
-
+ reg signal;
  reg [22:0] disps;
  reg [15:0] password; 
  reg [15:0] inpassword;
@@ -21,6 +21,11 @@ module ASM (input clk,
  reg [5:0] next_state;
  reg [1:0]count_lock_unlock;
  reg count_changepass;
+ reg [7:0]succcount;
+ reg [7:0]unsucccount;
+ reg [7:0]renewcount;
+ reg [7:0]newcount;
+ reg [7:0]oldcount;
 
 // parameters for States, you will need more states obviously
 parameter IDLE = 6'b000000; //idle state 
@@ -337,7 +342,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 						end
 						else if(count_changepass == 1)
 						begin
-							next_state == CHANGECOMPARE;
+							next_state = COMPARECHANGE;
 						end
 					end
 					else
@@ -361,7 +366,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 			
 			else if (current_state == OLD) //displays old and then sends the state to get first digit
 			begin
-				if (time_counter1 == new_clk400)//make a new name for this, is it equal to 400
+				if (signal == 1)//make a new name for this, is it equal to 400
 				begin
 					next_state = GETFIRSTDIGIT;
 				end
@@ -373,7 +378,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 			
 			else if (current_state == NEW) 	//This state will display neu and then send the state to change first digit
 			begin
-				if (time_counter2 == new_clk400)
+				if (signal == 1)
 				begin
 					next_state = CHANGEFIRSTDIGIT;
 				end
@@ -385,7 +390,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 			
 			else if(current_state == RENEW)	//this state will display neu and then send the state back to change first digit
 			begin
-				if (time_counter3 == new_clk400)
+				if (signal == 1)
 				begin
 					next_state = CHANGEFIRSTDIGIT;
 				end
@@ -397,7 +402,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 			
 			else if(current_state == SUCC)	//in this state the user will be told that they entered the correct new password twice and that the new password has been set.
 			begin
-				if (time_counter4 == new_clk400) //After the counter has been reached then the user will be returned to the unlocked state
+				if (signal == 1) //After the counter has been reached then the user will be returned to the unlocked state
 				begin
 					next_state = UNLOCKED;
 				end
@@ -409,7 +414,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 			
 			else if(current_state == UNSUCC) // in this state the user will be told that they entered the new password incorrectly and that the password has not been changed
 			begin
-				if(time_counter5 == newclk400) // they will then be taken to the unlocked state
+				if(signal == 1) // they will then be taken to the unlocked state
 				begin
 					next_state = UNLOCKED;
 				end
@@ -460,8 +465,10 @@ debouncer changes(new_clk,rst,change,clean_change);
 		
 			else if(current_state == GETFIRSTDIGIT)
 			begin
+				oldcount = 8'd0;
 				if(clean_ent==1)
 					inpassword[15:12]=sw[3:0]; // inpassword is the password entered by user, first 4 digin will be equal to current switch values
+					
 			end
 
 			else if (current_state == GETSECONDDIGIT)
@@ -482,6 +489,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 			begin
 				if (clean_ent == 1)
 					inpassword[3:0] = sw[3:0];
+					signal = 1'b0;
 			end
 			
 			else if (current_state == UNLOCKED) //change the count value to 1 so that the next time the loop runs it preforms the correct oporation
@@ -493,19 +501,41 @@ debouncer changes(new_clk,rst,change,clean_change);
 			else if (current_state == CHANGEFIRSTDIGIT) //change the first value of a temporary password
 			begin
 				if (clean_ent == 1)
-					changepassword[15:12]=sw[3:0];
+					if (count_changepass == 0)
+					begin
+						changepassword1[15:12] = sw[3:0];
+					end
+					else if (count_changepass == 1)
+					begin
+						changepassword2[15:12] = sw[3:0];
+					end
 			end
 			
 			else if (current_state == CHANGESECONDDIGIT) // change the second value of a temporary password
 			begin
 				if (clean_ent == 1)
-					changepassword[11:8]=sw[3:0];
+					if (count_changepass == 0)
+					begin
+						changepassword1[11:8] = sw[3:0];
+					end
+					else if (count_changepass == 1)
+					begin
+						changepassword2[11:8] = sw[3:0];
+					end
 			end
 			
 			else if (current_state == CHANGETHIRDDIGIT) // change the third value of a temporary password
 			begin
 				if (clean_ent == 1)
-					changepassword[7:4]=sw[3:0];
+					if (count_changepass == 0)
+					begin
+						changepassword1[7:4] = sw[3:0];
+					end
+					else if (count_changepass == 1)
+					begin
+						changepassword2[7:4] = sw[3:0];
+					end
+					
 			end
 
 			else if (current_state == CHANGEFOURTHDIGIT) // change the fourth value of a temporary password
@@ -513,13 +543,13 @@ debouncer changes(new_clk,rst,change,clean_change);
 				if (clean_ent == 1)
 					if (count_changepass == 0)
 					begin
-						changepassword1[3:0]=sw[3:0];
+						changepassword1[3:0] = sw[3:0];
 					end
 					else if (count_changepass == 1)
 					begin
 						changepassword2[3:0] = sw[3:0];
 					end
-					
+					signal = 1'b0;
 			end
 
 			else if (current_state == LOCKED) // change the count in the locked state to ensure the proper operation
@@ -533,30 +563,75 @@ debouncer changes(new_clk,rst,change,clean_change);
 			
 			else if(current_state == OLD) //display old for a period of time
 			begin
+				if (oldcount<400)	
+				begin
+				oldcount = oldcount + 1'b1;
+				signal = 1'b0;
 				//a counter will be running here
+				end
+				else
+				begin
+				signal = 1'b1;
+				end
 				count_lock_unlock = 2'b10;
 			end
 			
 			else if(current_state == NEW) //display neu for a period of time and define which temperary password will be used
 			begin
+				if (newcount<400)
+				begin
+				newcount = newcount + 1'b1;
+				signal = 1'b0;
+				end
+				else
+				begin
+				signal = 1'b1;
+				end
 				//a counter will be running here
 				count_changepass = 1'b0;
 			end
 			
 			else if(current_state == RENEW) //display rneu for a period of time and change the counter to ensure that a different temp password is used
 			begin
+				if (renewcount<400)
+				begin
+				renewcount = renewcount + 1'b1;
+				signal = 1'b0;
+				end
+				else
+				begin
+				signal = 1'b1;
+				end
 				//a counter will be running here
 				count_changepass = 1'b1;
 			end
 			
 			else if(current_state == SUCC) //display succ for a period of time and change the password to be equal to the user input
 			begin
+				if (succcount<400)
+				begin
+				succcount = succcount + 1'b1;
+				signal = 1'b0;
+				end
+				else
+				begin
+				signal = 1'b1;
+				end
 				//a counter will be running here
 				password = changepassword1;
 			end
 			
 			else if(current_state == UNSUCC) //display unsuc for a period of time and do not change the password
 			begin
+				if (unsucccount<400)
+				begin
+				unsucccount = unsucccount + 1'b1;
+				signal = 1'b0;
+				end
+				else
+				begin
+				signal = 1'b1;
+				end
 				//a counter will be running here
 				password = password;
 			end
@@ -641,17 +716,40 @@ blinking blink(disps,clk,seven_out, rst, AN); //This outputs to our ssd display 
 		
 		else if(current_state == CHANGESECONDDIGIT)
 		begin
-		disps <= {3'b101,1'b0,changepassword[15:12],1'b0,sw[3:0],blank,blank};
+			if(count_changepass == 0)
+			begin
+				disps <= {3'b101,1'b0,changepassword1[15:12],1'b0,sw[3:0],blank,blank};
+			end
+			else
+			begin
+				disps <= {3'b101,1'b0,changepassword2[15:12],1'b0,sw[3:0],blank,blank};
+			end
 		end
 		
 		else if(current_state == CHANGETHIRDDIGIT)
 		begin
-		disps <= {3'b110,1'b0,changepassword[15:12],1'b0,changepassword[11:8],1'b0,sw[3:0],blank};
+			if(count_changepass == 0)
+			begin
+				disps <= {3'b110,1'b0,changepassword1[15:12],1'b0,changepassword1[11:8],1'b0,sw[3:0],blank};
+			end
+			else
+			begin
+				disps <= {3'b110,1'b0,changepassword2[15:12],1'b0,changepassword2[11:8],1'b0,sw[3:0],blank};
+			end
+		//disps <= {3'b110,1'b0,changepassword[15:12],1'b0,changepassword[11:8],1'b0,sw[3:0],blank};
 		end
 		
 		else if(current_state == CHANGEFOURTHDIGIT)
 		begin
-		disps <= {3'b111,1'b0,changepassword[15:12],1'b0,changepassword[11:8],1'b0,changepassword[7:4],1'b0,sw[3:0]};
+			if(count_changepass == 0)
+			begin
+				disps <= {3'b111,1'b0,changepassword1[15:12],1'b0,changepassword1[11:8],1'b0,changepassword1[7:4],1'b0,sw[3:0]};
+			end
+			else
+			begin
+				disps <= {3'b111,1'b0,changepassword2[15:12],1'b0,changepassword2[11:8],1'b0,changepassword2[7:4],1'b0,sw[3:0]};
+			end
+		//disps <= {3'b111,1'b0,changepassword[15:12],1'b0,changepassword[11:8],1'b0,changepassword[7:4],1'b0,sw[3:0]};
 		end
 		
 		else if (current_state == LOCKED)
