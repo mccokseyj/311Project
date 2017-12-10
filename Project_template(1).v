@@ -1,5 +1,6 @@
 module ASM (input clk,
     input rst,
+	 input rst2,
     input clr,
     input ent,
     input change,
@@ -14,10 +15,12 @@ module ASM (input clk,
  reg [22:0] disps;
  reg [15:0] password; 
  reg [15:0] inpassword;
- reg [15:0] changepassword;
- reg [5:0] current_state;
+ reg [15:0] changepassword1;
+ reg [15:0] changepassword2;
+ reg[5:0] current_state;
  reg [5:0] next_state;
- reg count_lock_unlock;
+ reg [1:0]count_lock_unlock;
+ reg count_changepass;
 
 // parameters for States, you will need more states obviously
 parameter IDLE = 6'b000000; //idle state 
@@ -33,6 +36,12 @@ parameter CHANGETHIRDDIGIT = 6'b001001; //change the third input for the passwor
 parameter CHANGEFOURTHDIGIT = 6'b001010; //change the fourth input for the password
 parameter LOCKED = 6'b001011; // the locked mode
 parameter CHECKPASSWORD = 6'b001100; // give time to read the full password
+parameter OLD = 6'b001101; // display old for 1Hz
+parameter NEW = 6'b001110; //display neu for 1Hz
+parameter RENEW = 6'b001111; //display rneu for 1Hz
+parameter SUCC = 6'b010000; // display succ for 1Hz
+parameter UNSUCC = 6'b010001; //display usuc for 1Hz
+parameter COMPARECHANGE = 6'b010010; //will compare the two new passward and if they are the same, set teh new password
 // parameters for output, you will need more obviously
 parameter one = 5'd1; //1
 parameter two = 5'd2; //2
@@ -65,10 +74,10 @@ wire clean_change;
 debouncer changes(new_clk,rst,change,clean_change);
 
 //Sequential part for state transitions
-	always @ (posedge new_clk or posedge rst)
+	always @ (posedge new_clk or posedge rst2)
 	begin
 		// your code goes here
-		if(rst==1)
+		if(rst2==1)
 		current_state<= IDLE;
 		else
 		current_state<= next_state;
@@ -80,7 +89,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 	// combinational part - next state definitions
 	always @ (*)
 	begin
-		if (rst == 1)
+		if (rst2 == 1)
 		begin
 			next_state = IDLE;
 		end
@@ -229,6 +238,17 @@ debouncer changes(new_clk,rst,change,clean_change);
 						next_state = UNLOCKED; // if the inputed password is incorrect
 					end
 				end
+				else if(count_lock_unlock == 2)
+				begin
+					if(password == inpassword)
+					begin
+						next_state = NEW;
+					end
+					else
+					begin
+						next_state = UNLOCKED;
+					end
+				end
 				else
 				begin
 					next_state = LOCKED;
@@ -243,7 +263,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 				end
 				else if(clean_change == 1)
 				begin
-					next_state = CHANGEFIRSTDIGIT;
+					next_state = OLD;
 				end
 				else
 				begin
@@ -301,7 +321,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 				end
 			end
 				
-			else if (current_state == CHANGEFOURTHDIGIT)
+			else if (current_state == CHANGEFOURTHDIGIT) //changes the fourth digit and moves back to unlocked mode
 			begin
 				if (clean_clr == 1)
 				begin
@@ -311,7 +331,14 @@ debouncer changes(new_clk,rst,change,clean_change);
 				begin
 					if (clean_ent == 1)
 					begin
-						next_state = UNLOCKED;
+						if (count_changepass == 0)
+						begin
+							next_state = RENEW;
+						end
+						else if(count_changepass == 1)
+						begin
+							next_state == CHANGECOMPARE;
+						end
 					end
 					else
 					begin
@@ -320,7 +347,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 				end
 			end
 						
-			else if (current_state == LOCKED)
+			else if (current_state == LOCKED) //moves from the locked state to the get first digit state
 			begin
 				if (clean_ent == 1)
 				begin
@@ -331,6 +358,79 @@ debouncer changes(new_clk,rst,change,clean_change);
 					next_state = current_state;
 				end
 			end
+			
+			else if (current_state == OLD) //displays old and then sends the state to get first digit
+			begin
+				if (time_counter1 == new_clk400)//make a new name for this, is it equal to 400
+				begin
+					next_state = GETFIRSTDIGIT;
+				end
+				else
+				begin
+					next_state = current_state;
+				end
+			end
+			
+			else if (current_state == NEW) 	//This state will display neu and then send the state to change first digit
+			begin
+				if (time_counter2 == new_clk400)
+				begin
+					next_state = CHANGEFIRSTDIGIT;
+				end
+				else
+				begin
+					next_state = current_state;
+				end
+			end
+			
+			else if(current_state == RENEW)	//this state will display neu and then send the state back to change first digit
+			begin
+				if (time_counter3 == new_clk400)
+				begin
+					next_state = CHANGEFIRSTDIGIT;
+				end
+				else
+				begin
+					next_state = current_state;
+				end
+			end
+			
+			else if(current_state == SUCC)	//in this state the user will be told that they entered the correct new password twice and that the new password has been set.
+			begin
+				if (time_counter4 == new_clk400) //After the counter has been reached then the user will be returned to the unlocked state
+				begin
+					next_state = UNLOCKED;
+				end
+				else
+				begin
+					next_state = current_state;
+				end
+			end
+			
+			else if(current_state == UNSUCC) // in this state the user will be told that they entered the new password incorrectly and that the password has not been changed
+			begin
+				if(time_counter5 == newclk400) // they will then be taken to the unlocked state
+				begin
+					next_state = UNLOCKED;
+				end
+				else
+				begin
+					next_state = current_state;
+				end
+			end
+			
+			else if (current_state == COMPARECHANGE)  //in this state the two passwords that the user inputed will be compared and if they are the same it is a success
+			begin
+				if(changepassword1 == changepassword2) //otherwise it is unsuccesul, these tow state are called respectivly
+				begin
+					next_state = SUCC;
+				end
+				else
+				begin
+					next_state = UNSUCC;
+				end
+			end
+			
 			else
 			begin
 				next_state = current_state;
@@ -341,85 +441,129 @@ debouncer changes(new_clk,rst,change,clean_change);
 
 
 	 //Sequential part for control registers, this part is responsible from assigning control registers or stored values
-	always @ (posedge new_clk or posedge rst)
+	always @ (posedge new_clk or posedge rst2)
 	begin
-		if(rst)
+		if(rst2)
 		begin
-			inpassword[15:0]<=16'd0; // password which is taken coming from user, 
-			password[15:0]<=16'd0; //set teh password to be zeros
+			inpassword[15:0]=16'd0; // password which is taken coming from user, 
+			password[15:0]=16'd0; //set teh password to be zeros
+			count_lock_unlock = 2'b00;
 		end
 
 		else 
 			if(current_state == IDLE)
 			begin
-			 	password[15:0] <= 16'b0000000000000000; // Built in reset is 0, when user in IDLE state.
+			 	password[15:0] = 16'b0000000000000000; // Built in reset is 0, when user in IDLE state.
 				 // you may need to add extra things here.
+				 count_lock_unlock = 2'b00;
 			end
 		
 			else if(current_state == GETFIRSTDIGIT)
 			begin
 				if(clean_ent==1)
-					inpassword[15:12]<=sw[3:0]; // inpassword is the password entered by user, first 4 digin will be equal to current switch values
+					inpassword[15:12]=sw[3:0]; // inpassword is the password entered by user, first 4 digin will be equal to current switch values
 			end
 
 			else if (current_state == GETSECONDDIGIT)
 			begin
 
 				if(clean_ent==1)
-					inpassword[11:8]<=sw[3:0]; // inpassword is the password entered by user, second 4 digit will be equal to current switch values
+					inpassword[11:8]=sw[3:0]; // inpassword is the password entered by user, second 4 digit will be equal to current switch values
 			end
 			
-			else if (current_state == GETTHIRDDIGIT)
+			else if (current_state == GETTHIRDDIGIT)	//set the next 4 bits of inpassword
 			begin
 				if (clean_ent == 1)
-					inpassword[7:4] <= sw[3:0];
+					inpassword[7:4] = sw[3:0];
 					
 			end
 			
-			else if (current_state == GETFOURTHDIGIT)
+			else if (current_state == GETFOURTHDIGIT) //set the last four bits of inpassword
 			begin
 				if (clean_ent == 1)
-					inpassword[3:0] <= sw[3:0];
+					inpassword[3:0] = sw[3:0];
 			end
 			
-			else if (current_state == UNLOCKED)
+			else if (current_state == UNLOCKED) //change the count value to 1 so that the next time the loop runs it preforms the correct oporation
 			begin
-				count_lock_unlock <= 1'b1;
+				count_lock_unlock = 2'b01;
 			end
 					
 			
-			else if (current_state == CHANGEFIRSTDIGIT)
+			else if (current_state == CHANGEFIRSTDIGIT) //change the first value of a temporary password
 			begin
 				if (clean_ent == 1)
-					changepassword[15:12]<=sw[3:0];
+					changepassword[15:12]=sw[3:0];
 			end
 			
-			else if (current_state == CHANGESECONDDIGIT)
+			else if (current_state == CHANGESECONDDIGIT) // change the second value of a temporary password
 			begin
 				if (clean_ent == 1)
-					changepassword[11:8]<=sw[3:0];
+					changepassword[11:8]=sw[3:0];
 			end
 			
-			else if (current_state == CHANGETHIRDDIGIT)
+			else if (current_state == CHANGETHIRDDIGIT) // change the third value of a temporary password
 			begin
 				if (clean_ent == 1)
-					changepassword[7:4]<=sw[3:0];
+					changepassword[7:4]=sw[3:0];
 			end
 
-			else if (current_state == CHANGEFOURTHDIGIT)
+			else if (current_state == CHANGEFOURTHDIGIT) // change the fourth value of a temporary password
 			begin
 				if (clean_ent == 1)
-					changepassword[3:0]<=sw[3:0];
-					password <= changepassword;
+					if (count_changepass == 0)
+					begin
+						changepassword1[3:0]=sw[3:0];
+					end
+					else if (count_changepass == 1)
+					begin
+						changepassword2[3:0] = sw[3:0];
+					end
+					
 			end
 
-			else if (current_state == LOCKED)
+			else if (current_state == LOCKED) // change the count in the locked state to ensure the proper operation
 			begin
-			count_lock_unlock <= 1'b0;
+			count_lock_unlock = 2'b00;
 			end
 			
-			else if(current_state == CHECKPASSWORD)
+			else if(current_state == CHECKPASSWORD) //give time to check the password
 			begin
+			end
+			
+			else if(current_state == OLD) //display old for a period of time
+			begin
+				//a counter will be running here
+				count_lock_unlock = 2'b10;
+			end
+			
+			else if(current_state == NEW) //display neu for a period of time and define which temperary password will be used
+			begin
+				//a counter will be running here
+				count_changepass = 1'b0;
+			end
+			
+			else if(current_state == RENEW) //display rneu for a period of time and change the counter to ensure that a different temp password is used
+			begin
+				//a counter will be running here
+				count_changepass = 1'b1;
+			end
+			
+			else if(current_state == SUCC) //display succ for a period of time and change the password to be equal to the user input
+			begin
+				//a counter will be running here
+				password = changepassword1;
+			end
+			
+			else if(current_state == UNSUCC) //display unsuc for a period of time and do not change the password
+			begin
+				//a counter will be running here
+				password = password;
+			end
+			
+			else if(current_state == COMPARECHANGE)
+			begin
+				//a brief period of time to make sure all of the input is compared
 			end
 
 		/*
@@ -435,8 +579,8 @@ debouncer changes(new_clk,rst,change,clean_change);
 	// Sequential part for outputs; this part is responsible from outputs; i.e. SSD and LEDS
 
 
-blinking blink(disps,clk,seven_out, rst, AN);
-
+blinking blink(disps,clk,seven_out, rst, AN); //This outputs to our ssd display and blinks the necessary bit at 1Hz
+//These change the disps register by the stored values and swithces to display the various needed ssd displays
 	always @(posedge new_clk)
 	begin
 
@@ -518,6 +662,36 @@ blinking blink(disps,clk,seven_out, rst, AN);
 		else if (current_state == CHECKPASSWORD)
 		begin
 		disps <= {3'b000, blank, blank, blank, blank};
+		end
+		
+		else if (current_state == OLD)
+		begin
+		disps <= {3'b000,blank, O, L, d};
+		end
+		
+		else if (current_state == NEW)
+		begin
+		disps <= {3'b000,blank, n, E, u};
+		end
+		
+		else if (current_state == RENEW)
+		begin
+		disps <= {3'b000, r, n, E, u};
+		end
+		
+		else if (current_state == SUCC)
+		begin
+		disps <= {3'b000, S, u, C, C};
+		end
+		
+		else if (current_state == UNSUCC)
+		begin
+		disps <= {3'b000, u, n, S, u};
+		end
+		
+		else if (current_state == COMPARECHANGE)
+		begin
+		disps <= {3'b000,blank, blank, blank, blank};
 		end
 		
 		end
