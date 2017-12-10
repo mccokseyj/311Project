@@ -26,7 +26,9 @@ module ASM (input clk,
  reg [8:0]renewcount;
  reg [8:0]newcount;
  reg [8:0]oldcount;
- reg [8:0]trycount;
+ reg [8:0]trycount1;
+ reg [8:0]trycount2;
+ reg [8:0]trycount3;
  reg [1:0]tries;
 
 // parameters for States, you will need more states obviously
@@ -124,7 +126,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 			
 			else if(current_state == TRY3)
 			begin
-				if (trycount == 400)
+				if (trycount3 == 400)
 				begin
 					next_state = GETFIRSTDIGIT;
 				end
@@ -136,7 +138,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 			
 			else if(current_state == TRY2)
 			begin
-				if (trycount == 400)
+				if (trycount2 == 400)
 				begin
 					next_state = GETFIRSTDIGIT;
 				end
@@ -148,7 +150,7 @@ debouncer changes(new_clk,rst,change,clean_change);
 
 			else if(current_state == TRY1)
 			begin
-				if (trycount == 400)
+				if (trycount1 == 400)
 				begin
 					next_state = GETFIRSTDIGIT;
 				end
@@ -717,17 +719,17 @@ debouncer changes(new_clk,rst,change,clean_change);
 			
 			else if(current_state == TRY3)
 			begin
-				trycount = trycount + 1'b1;
+				trycount3 = trycount3 + 1'b1;
 			end
 			
 			else if(current_state == TRY2)
 			begin
-				trycount = trycount + 1'b1;
+				trycount2 = trycount2 + 1'b1;
 			end	
 
 			else if(current_state == TRY1)
 			begin
-				trycount = trycount + 1'b1;
+				trycount1 = trycount1 + 1'b1;
 			end			
 			
 			else if(current_state == COMPARECHANGE)
